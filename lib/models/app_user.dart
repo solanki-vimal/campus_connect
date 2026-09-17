@@ -19,6 +19,25 @@ class AppUser {
 
   bool get isPending => role == 'pending';
 
+  AppUser copyWith({
+    String? name,
+    String? email,
+    String? role,
+    String? requestedRole,
+    String? department,
+    String? club,
+  }) {
+    return AppUser(
+      uid: uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      requestedRole: requestedRole ?? this.requestedRole,
+      department: department ?? this.department,
+      club: club ?? this.club,
+    );
+  }
+
   factory AppUser.fromMap(String uid, Map<String, dynamic> map) {
     return AppUser(
       uid: uid,
