@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
+import '../notices/notices_list_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -20,11 +21,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
     'Lost & Found',
   ];
 
-  // Placeholder tab bodies — these will be replaced with real screens
-  // (NoticesListScreen, EventsListScreen, LostFoundListScreen) in Phase 2+.
+  // Notices is now live (Phase 2). Events and Lost & Found are still
+  // placeholders until Phase 3/4.
   static const List<Widget> _tabs = [
     _HomeTabPlaceholder(),
-    _ComingSoonTab(label: 'Notices'),
+    NoticesListScreen(),
     _ComingSoonTab(label: 'Events'),
     _ComingSoonTab(label: 'Lost & Found'),
   ];
