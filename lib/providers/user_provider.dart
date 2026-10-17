@@ -23,12 +23,12 @@ class UserProvider extends ChangeNotifier {
       // authStateChanges before the Firestore user document write finishes.
       // Retry a few times with a short delay before treating it as missing.
       AppUser? fetched;
-      const maxAttempts = 4;
+      const maxAttempts = 8;
       for (var attempt = 1; attempt <= maxAttempts; attempt++) {
         fetched = await _userService.fetchUser(uid);
         if (fetched != null) break;
         if (attempt < maxAttempts) {
-          await Future.delayed(const Duration(milliseconds: 400));
+          await Future.delayed(const Duration(milliseconds: 500));
         }
       }
 

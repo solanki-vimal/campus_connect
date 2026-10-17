@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/dashboard_home_tab.dart';
+import '../../widgets/notification_bell.dart';
 import '../notices/notices_list_screen.dart';
+import '../events/events_list_screen.dart';
+import '../lost_found/lost_found_list_screen.dart';
+import '../profile/profile_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -14,34 +19,32 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   int _currentIndex = 0;
 
-  static const List<String> _titles = [
-    'Home',
-    'Notices',
-    'Events',
-    'Lost & Found',
-  ];
-
-  // Notices is now live (Phase 2). Events and Lost & Found are still
-  // placeholders until Phase 3/4.
-  static const List<Widget> _tabs = [
-    _HomeTabPlaceholder(),
-    NoticesListScreen(),
-    _ComingSoonTab(label: 'Events'),
-    _ComingSoonTab(label: 'Lost & Found'),
-  ];
+  static const List<String> _titles = ['Home', 'Notices', 'Events', 'Lost & Found'];
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<UserProvider>().appUser;
+
+    // Built in build() so DashboardHomeTab receives live navigation callbacks.
+    final tabs = [
+      DashboardHomeTab(
+        onNavigateToNotices: () => setState(() => _currentIndex = 1),
+        onNavigateToEvents: () => setState(() => _currentIndex = 2),
+      ),
+      const NoticesListScreen(),
+      const EventsListScreen(),
+      const LostFoundListScreen(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: GestureDetector(
-            onTap: () {
-              // TODO(Phase 6): navigate to Profile screen
-            },
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
             child: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
               child: Text(
@@ -50,87 +53,29 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
           ),
         ),
-        title: Text(_currentIndex == 0 ? 'Hi, ${user?.name.split(' ').first ?? ''}' : _titles[_currentIndex]),
+        title: Text(_currentIndex == 0 ? 'CampusConnect' : _titles[_currentIndex]),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO(Phase 5): navigate to Notifications screen
-            },
-          ),
+          const NotificationBell(),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () async {
               await AuthService().logout();
-              if (context.mounted) {
-                context.read<UserProvider>().clear();
-              }
+              if (context.mounted) context.read<UserProvider>().clear();
             },
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: _currentIndex, children: tabs),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.campaign_outlined), selectedIcon: Icon(Icons.campaign), label: 'Notices'),
           NavigationDestination(icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: 'Events'),
           NavigationDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: 'Lost & Found'),
         ],
-      ),
-    );
-  }
-}
-
-class _HomeTabPlaceholder extends StatelessWidget {
-  const _HomeTabPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().appUser;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Welcome, ${user?.name ?? ''}',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text('Department: ${user?.department ?? ''}'),
-            const SizedBox(height: 24),
-            Text(
-              'Recent Notices and Upcoming Events will appear here once the '
-                  'Notice and Event modules are built (Phase 2/3).',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonTab extends StatelessWidget {
-  final String label;
-  const _ComingSoonTab({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '$label module coming soon',
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/notice.dart';
+import '../../utils/date_format_utils.dart';
 
 class NoticeDetailScreen extends StatelessWidget {
   final Notice notice;
@@ -26,11 +27,6 @@ class NoticeDetailScreen extends StatelessWidget {
       default:
         return 'Normal';
     }
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    return '${date.day}/${date.month}/${date.year}';
   }
 
   @override
@@ -62,7 +58,7 @@ class NoticeDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Posted by ${notice.postedByName} on ${_formatDate(notice.datePosted)}',
+              'Posted by ${notice.postedByName} on ${DateFormatUtils.shortDate(notice.datePosted)}',
               style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const Divider(height: 32),
@@ -82,7 +78,7 @@ class NoticeDetailScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.event_busy, size: 18),
                     const SizedBox(width: 8),
-                    Text('Expires on ${_formatDate(notice.expiryDate)}'),
+                    Text('Expires on ${DateFormatUtils.shortDate(notice.expiryDate)}'),
                   ],
                 ),
               ),

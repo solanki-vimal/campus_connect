@@ -37,7 +37,7 @@ class PendingApprovalScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.hourglass_top, size: 64, color: Colors.deepPurple),
+              Icon(Icons.hourglass_top, size: 64, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 24),
               Text(
                 'Your $requestedRoleLabel account is awaiting approval',

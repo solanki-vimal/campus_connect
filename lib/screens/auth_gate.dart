@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import 'auth/login_screen.dart';
 import 'pending_approval_screen.dart';
 import 'student/student_dashboard.dart';
@@ -20,7 +21,45 @@ class AuthGate extends StatelessWidget {
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo
+                  Image.asset(
+                    'assets/logo.png',
+                    width: 180,
+                    height: 180,
+                  ),
+                  const SizedBox(height: 24),
+                  // App Name
+                  Text(
+                    'CampusConnect',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Tagline / Subtitle
+                  Text(
+                    'Your Campus, Connected',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  // Loading Animation
+                  const CircularProgressIndicator(),
+                ],
+              ),
+            ),
+          );
         }
 
         final firebaseUser = snapshot.data;
@@ -73,14 +112,22 @@ class _RoleRouterState extends State<_RoleRouter> {
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
         if (userProvider.isLoading) {
-          return const Scaffold(
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading profile...'),
+                  Image.asset('assets/logo.png', width: 140, height: 140),
+                  const SizedBox(height: 24),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Setting up your dashboard...',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -140,7 +187,16 @@ class _RoleRouterState extends State<_RoleRouter> {
           );
         }
 
-        switch (userProvider.appUser!.role) {
+        final user = userProvider.appUser!;
+
+        // Set up FCM topics and token for this user (safe to call repeatedly —
+        // FCM topic subscriptions are idempotent).
+        NotificationService.setupForUser(
+          uid: user.uid,
+          department: user.department,
+        );
+
+        switch (user.role) {
           case 'pending':
             return const PendingApprovalScreen();
           case 'faculty':

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/notice_service.dart';
+import '../../services/admin_settings_service.dart';
 import '../../models/notice.dart';
 
 class CreateNoticeScreen extends StatefulWidget {
@@ -23,22 +24,10 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   final _noticeService = NoticeService();
+  final _settingsService = AdminSettingsService();
 
-  static const List<String> _categories = [
-    'General',
-    'Academic',
-    'Examination',
-    'Holiday',
-    'Placement',
-    'Workshop',
-    'Fee/Admin',
-    'Emergency',
-  ];
-
-  static const List<String> _departments = ['all', 'CSE', 'IT', 'Civil', 'Mechanical', 'Electrical'];
-
-  late String _category;
-  late String _department;
+  String? _category;
+  String _department = 'all'; // 'all' is always available as a special option
   late String _priority; // normal | important | urgent
   DateTime? _expiryDate;
 
@@ -52,7 +41,7 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
 
     _titleController = TextEditingController(text: existing?.title ?? '');
     _descriptionController = TextEditingController(text: existing?.description ?? '');
-    _category = existing?.category ?? 'General';
+    _category = existing?.category; // null = not yet selected (dynamic load)
     _department = existing?.department ?? 'all';
     _priority = existing?.priority ?? 'normal';
     _expiryDate = existing?.expiryDate;
@@ -93,7 +82,7 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
         await _noticeService.updateNotice(widget.existingNotice!.id, {
           'title': _titleController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'category': _category,
+          'category': _category!,
           'department': _department,
           'priority': _priority,
           'expiryDate': _expiryDate != null
@@ -104,7 +93,7 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
         await _noticeService.createNotice(
           title: _titleController.text,
           description: _descriptionController.text,
-          category: _category,
+          category: _category!,
           department: _department,
           priority: _priority,
           postedBy: user.uid,
@@ -130,64 +119,131 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    InputDecoration inputDeco(String label, {String? hint, Widget? suffix}) =>
+        InputDecoration(
+          labelText: label,
+          hintText: hint,
+          suffixIcon: suffix,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          filled: true,
+          fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        );
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEditMode ? 'Edit Notice' : 'Create Notice')),
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          widget.isEditMode ? 'Edit Notice' : 'Create Notice',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
+              // ── Notice Details section ──────────────────────────────
+              Text('Notice Details',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+                decoration: inputDeco('Title',
+                    hint: 'e.g. Mid-Semester Examination Schedule'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Title is required' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _descriptionController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
+                maxLines: 4,
+                decoration: inputDeco('Description',
+                    hint: 'Write your announcement here…'),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Description is required'
+                    : null,
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _category,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: _categories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v!),
+              const SizedBox(height: 28),
+
+              // ── Audience section ────────────────────────────────────
+              Text('Audience',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+
+              // Category
+              StreamBuilder<List<String>>(
+                stream: _settingsService.streamNames('notice_categories'),
+                builder: (context, snapshot) {
+                  final cats = snapshot.data ?? [];
+                  if (cats.isNotEmpty && !cats.contains(_category)) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _category = cats.first);
+                    });
+                  }
+                  return DropdownButtonFormField<String>(
+                    initialValue: cats.contains(_category) ? _category : null,
+                    decoration: inputDeco('Category'),
+                    hint: snapshot.connectionState == ConnectionState.waiting
+                        ? const Text('Loading…')
+                        : const Text('Select Category'),
+                    items: cats
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _category = v);
+                    },
+                    validator: (v) => v == null ? 'Select a category' : null,
+                  );
+                },
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _department,
-                decoration: const InputDecoration(
-                  labelText: 'Department',
-                  border: OutlineInputBorder(),
-                  helperText: '"All" makes this a general, college-wide notice',
-                ),
-                items: _departments
-                    .map((d) => DropdownMenuItem(
-                  value: d,
-                  child: Text(d == 'all' ? 'All (General)' : d),
-                ))
-                    .toList(),
-                onChanged: (v) => setState(() => _department = v!),
+              const SizedBox(height: 14),
+
+              // Department
+              StreamBuilder<List<String>>(
+                stream: _settingsService.streamNames('departments'),
+                builder: (context, snapshot) {
+                  final depts = ['all', ...snapshot.data ?? []];
+                  return DropdownButtonFormField<String>(
+                    initialValue: depts.contains(_department) ? _department : 'all',
+                    decoration: inputDeco('Department',
+                        hint: '"All (General)" makes this college-wide'),
+                    items: depts
+                        .map((d) => DropdownMenuItem<String>(
+                            value: d,
+                            child: Text(d == 'all' ? 'All (General)' : d)))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _department = v);
+                    },
+                  );
+                },
               ),
-              const SizedBox(height: 16),
-              const Text('Priority', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 28),
+
+              // ── Priority ────────────────────────────────────────────
+              Text('Priority',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
               SegmentedButton<String>(
                 showSelectedIcon: false,
                 segments: const [
@@ -196,49 +252,84 @@ class _CreateNoticeScreenState extends State<CreateNoticeScreen> {
                   ButtonSegment(value: 'urgent', label: Text('Urgent')),
                 ],
                 selected: {_priority},
-                onSelectionChanged: (selection) => setState(() => _priority = selection.first),
+                onSelectionChanged: (s) =>
+                    setState(() => _priority = s.first),
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  _expiryDate == null
-                      ? 'Expiry Date (optional)'
-                      : 'Expires: ${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}',
-                ),
-                trailing: Wrap(
-                  spacing: 4,
-                  children: [
-                    if (_expiryDate != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _expiryDate = null),
+              const SizedBox(height: 14),
+
+              // Expiry date
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _pickExpiryDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.4)),
+                    color: colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 18, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _expiryDate == null
+                              ? 'Expiry Date (optional)'
+                              : 'Expires: ${_expiryDate!.day}/${_expiryDate!.month}/${_expiryDate!.year}',
+                          style: TextStyle(
+                            color: _expiryDate == null
+                                ? colorScheme.onSurfaceVariant
+                                : colorScheme.onSurface,
+                          ),
+                        ),
                       ),
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today),
-                      onPressed: _pickExpiryDate,
-                    ),
-                  ],
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  side: BorderSide(color: Theme.of(context).colorScheme.outline),
+                      if (_expiryDate != null)
+                        GestureDetector(
+                          onTap: () => setState(() => _expiryDate = null),
+                          child: Icon(Icons.close,
+                              size: 18, color: colorScheme.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              if (_errorMessage != null)
-                Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSubmit,
-                child: _isLoading
-                    ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-                    : Text(widget.isEditMode ? 'Update Notice' : 'Post Notice'),
+
+              const SizedBox(height: 28),
+
+              if (_errorMessage != null) ...[
+                Text(_errorMessage!,
+                    style: TextStyle(color: colorScheme.error)),
+                const SizedBox(height: 12),
+              ],
+
+              // ── Submit ──────────────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: FilledButton(
+                  onPressed: _isLoading ? null : _handleSubmit,
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    textStyle: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(widget.isEditMode ? 'Update Notice' : 'Post Notice'),
+                ),
               ),
+              const SizedBox(height: 32),
             ],
           ),
         ),

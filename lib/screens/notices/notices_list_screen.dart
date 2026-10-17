@@ -4,6 +4,7 @@ import '../../providers/user_provider.dart';
 import '../../services/notice_service.dart';
 import '../../models/notice.dart';
 import '../../widgets/notice_card.dart';
+import '../../widgets/confirm_delete_dialog.dart';
 import 'create_notice_screen.dart';
 import 'notice_detail_screen.dart';
 
@@ -16,7 +17,7 @@ class NoticesListScreen extends StatefulWidget {
 
 class _NoticesListScreenState extends State<NoticesListScreen> {
   final _noticeService = NoticeService();
-  String _filter = 'all'; // 'all' | 'department'
+  String _filter = 'general'; // 'general' | 'department'
 
   bool _canCreate(String? role) => role == 'faculty' || role == 'super_admin';
 
@@ -29,23 +30,10 @@ class _NoticesListScreenState extends State<NoticesListScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context, Notice notice) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Notice'),
-        content: Text('Are you sure you want to delete "${notice.title}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showDeleteConfirmDialog(
+      context,
+      itemLabel: 'notice',
+      itemName: notice.title,
     );
 
     if (confirmed == true) {
@@ -79,14 +67,30 @@ class _NoticesListScreenState extends State<NoticesListScreen> {
             child: Row(
               children: [
                 ChoiceChip(
-                  label: const Text('All'),
-                  selected: _filter == 'all',
-                  onSelected: (_) => setState(() => _filter = 'all'),
+                  label: const Text('College-wide'),
+                  selected: _filter == 'general',
+                  showCheckmark: false,
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _filter == 'general' ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  side: BorderSide.none,
+                  onSelected: (_) => setState(() => _filter = 'general'),
                 ),
                 const SizedBox(width: 8),
                 ChoiceChip(
                   label: const Text('My Department'),
                   selected: _filter == 'department',
+                  showCheckmark: false,
+                  selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _filter == 'department' ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  side: BorderSide.none,
                   onSelected: (_) => setState(() => _filter = 'department'),
                 ),
               ],
@@ -94,9 +98,9 @@ class _NoticesListScreenState extends State<NoticesListScreen> {
           ),
           Expanded(
             child: StreamBuilder<List<Notice>>(
-              stream: _filter == 'all'
-                  ? _noticeService.streamAllNotices()
-                  : _noticeService.streamNoticesForDepartment(user?.department ?? ''),
+              stream: _filter == 'general'
+                  ? _noticeService.streamGeneralNotices()
+                  : _noticeService.streamDepartmentOnly(user?.department ?? ''),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -123,8 +127,8 @@ class _NoticesListScreenState extends State<NoticesListScreen> {
                           const Icon(Icons.campaign_outlined, size: 48, color: Colors.grey),
                           const SizedBox(height: 12),
                           Text(
-                            _filter == 'all'
-                                ? 'No notices yet'
+                            _filter == 'general'
+                                ? 'No college-wide notices yet'
                                 : 'No notices for your department yet',
                             style: const TextStyle(color: Colors.grey),
                           ),

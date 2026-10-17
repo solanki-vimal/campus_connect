@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class AppUser {
   final String uid;
   final String name;
@@ -6,6 +8,7 @@ class AppUser {
   final String? requestedRole; // faculty | club_coordinator — only set while role == "pending"
   final String department;
   final String? club;
+  final DateTime? createdAt;
 
   AppUser({
     required this.uid,
@@ -15,6 +18,7 @@ class AppUser {
     this.requestedRole,
     required this.department,
     this.club,
+    this.createdAt,
   });
 
   bool get isPending => role == 'pending';
@@ -26,6 +30,7 @@ class AppUser {
     String? requestedRole,
     String? department,
     String? club,
+    DateTime? createdAt,
   }) {
     return AppUser(
       uid: uid,
@@ -35,6 +40,7 @@ class AppUser {
       requestedRole: requestedRole ?? this.requestedRole,
       department: department ?? this.department,
       club: club ?? this.club,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -47,6 +53,7 @@ class AppUser {
       requestedRole: map['requestedRole'],
       department: map['department'] ?? '',
       club: map['club'],
+      createdAt: map['createdAt'] != null ? (map['createdAt'] as Timestamp).toDate() : null,
     );
   }
 
@@ -58,6 +65,8 @@ class AppUser {
       if (requestedRole != null) 'requestedRole': requestedRole,
       'department': department,
       if (club != null) 'club': club,
+      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
     };
   }
 }
+

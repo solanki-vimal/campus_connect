@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/notice.dart';
+import '../utils/date_format_utils.dart';
+import 'entity_action_menu.dart';
 
 class NoticeCard extends StatelessWidget {
   final Notice notice;
@@ -15,8 +17,6 @@ class NoticeCard extends StatelessWidget {
     super.key,
   });
 
-  bool get _showMenu => onEdit != null || onDelete != null;
-
   Color _priorityColor() {
     switch (notice.priority) {
       case 'urgent':
@@ -28,20 +28,15 @@ class NoticeCard extends StatelessWidget {
     }
   }
 
-  String _timeAgo(DateTime? date) {
-    if (date == null) return '';
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -67,42 +62,10 @@ class NoticeCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            _timeAgo(notice.datePosted),
+                            DateFormatUtils.timeAgo(notice.datePosted),
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
-                          if (_showMenu)
-                            PopupMenuButton<String>(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.more_vert, size: 20),
-                              onSelected: (value) {
-                                if (value == 'edit') onEdit?.call();
-                                if (value == 'delete') onDelete?.call();
-                              },
-                              itemBuilder: (context) => [
-                                if (onEdit != null)
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.edit_outlined, size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Edit'),
-                                      ],
-                                    ),
-                                  ),
-                                if (onDelete != null)
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                        SizedBox(width: 8),
-                                        Text('Delete', style: TextStyle(color: Colors.red)),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
+                          EntityActionMenu(onEdit: onEdit, onDelete: onDelete),
                         ],
                       ),
                       const SizedBox(height: 4),
