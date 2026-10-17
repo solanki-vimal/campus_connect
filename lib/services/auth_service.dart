@@ -10,7 +10,7 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  bool isCollegeEmail(String email) {
+  static bool isCollegeEmail(String email) {
     return email.trim().toLowerCase().endsWith('@$allowedDomain');
   }
 
@@ -36,10 +36,9 @@ class AuthService {
       );
 
       final uid = credential.user!.uid;
-      await credential.user!.updateDisplayName(name.trim());
-
       final bool isSelfServiceRole = selectedRole == 'faculty' || selectedRole == 'club_coordinator';
 
+      // Write Firestore doc first so AuthGate/UserProvider can find it immediately
       await _firestore.collection('users').doc(uid).set({
         'name': name.trim(),
         'email': email.trim().toLowerCase(),
@@ -52,6 +51,9 @@ class AuthService {
         if (selectedRole == 'club_coordinator' && club != null && club.isNotEmpty) 'club': club,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Update display name asynchronously without blocking the signup flow
+      credential.user?.updateDisplayName(name.trim()).ignore();
 
       return null; // null = success
     } on FirebaseAuthException catch (e) {
@@ -75,6 +77,20 @@ class AuthService {
       return e.message ?? 'Login failed. Please check your credentials.';
     } catch (e) {
       return 'Login failed: $e';
+    }
+  }
+
+  Future<String?> resetPassword(String email) async {
+    if (!isCollegeEmail(email)) {
+      return 'Please enter a valid @$allowedDomain email address.';
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Failed to send password reset email.';
+    } catch (e) {
+      return 'An error occurred: $e';
     }
   }
 
